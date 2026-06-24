@@ -5,12 +5,6 @@
 
 QuietTools is a lightweight, native Windows utility that lives in your system tray. It provides quick-access color picking and OCR text extraction with global hotkeys, plus a keyboard-driven window manager for moving, resizing, and snapping windows.
 
-<table>
-  <tr>
-    <td><img src="Screenshots/overview.gif" alt="Overview" width="100%"></td>
-  </tr>
-</table>
-
 <h2 align="center">Features</h2>
 
 **Color Picker** — `Ctrl` + `Shift` + `C`
