@@ -12,6 +12,7 @@ QuietTools is a lightweight, native Windows utility that lives in your system tr
 - Copy HEX or RGB value to clipboard
 - Pixel-level accuracy with magnified loupe
 - Arrow keys for fine cursor movement (hold `Shift` for 5px steps)
+<img width="800" height="449" alt="qt_cp" src="https://github.com/user-attachments/assets/c7cc86c3-b973-4ad4-81f3-93cff4141930" />
 
 **Text Extractor** — `Ctrl` + `Alt` + `C`
 - Drag to select a screen region
