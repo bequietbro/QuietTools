@@ -14,11 +14,13 @@ QuietTools is a lightweight, native Windows utility that lives in your system tr
 - Arrow keys for fine cursor movement (hold `Shift` for 5px steps)
 <img width="533" height="299" alt="qt_cp" src="https://github.com/user-attachments/assets/c7cc86c3-b973-4ad4-81f3-93cff4141930" />
 
+
 **Text Extractor** — `Ctrl` + `Alt` + `C`
 - Drag to select a screen region
 - Recognizes text offline via Windows OCR
 - Supports English, Russian, Chinese, and any installed language pack
 - Multi-language text in a single selection works
+
 
 **Window Manager** — `Win` key + mouse
 - `Win` + **Left-drag**: Move a window
