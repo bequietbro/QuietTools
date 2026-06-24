@@ -35,8 +35,6 @@ const SWATCH_SIZE: i32 = 48;
 
 const ERROR_TIMER_ID: usize = 50;
 const ERROR_DURATION_MS: u32 = 2500;
-const COPIED_TIMER_ID: usize = 51;
-const COPIED_DURATION_MS: u32 = 800;
 
 enum Mode {
     Color,
@@ -66,7 +64,6 @@ struct OverlayState {
     busy: bool,
     picked: Option<PickedColor>,
     error: Option<(String, Instant)>,
-    copied: Option<Instant>,
 }
 
 unsafe impl Send for OverlayState {}
@@ -121,7 +118,6 @@ fn run_overlay(mode: Mode) -> Result<(), String> {
             busy: false,
             picked: None,
             error: None,
-            copied: None,
         });
         let raw = Box::into_raw(state);
 
@@ -162,7 +158,6 @@ unsafe extern "system" fn wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam:
         }
         WM_DESTROY => {
             let _ = KillTimer(Some(hwnd), ERROR_TIMER_ID);
-            let _ = KillTimer(Some(hwnd), COPIED_TIMER_ID);
             let ptr = SetWindowLongPtrW(hwnd, GWLP_USERDATA, 0) as *mut OverlayState;
             if !ptr.is_null() {
                 let state = Box::from_raw(ptr);
@@ -178,11 +173,6 @@ unsafe extern "system" fn wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam:
             let vk = wparam.0 as u16;
             if vk == VK_ESCAPE.0 {
                 if let Some(state) = state(hwnd) {
-                    if state.copied.is_some() {
-                        let _ = KillTimer(Some(hwnd), COPIED_TIMER_ID);
-                        let _ = DestroyWindow(hwnd);
-                        return LRESULT(0);
-                    }
                     if state.busy {
                         state.busy = false;
                         state.error = Some(("No text found".into(), Instant::now()));
@@ -273,9 +263,7 @@ unsafe extern "system" fn wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam:
                     if state.error.is_none() {
                         if wparam.0 != 0 {
                             let _ = crate::clipboard::write_text(&result);
-                            state.copied = Some(Instant::now());
-                            let _ = SetTimer(Some(hwnd), COPIED_TIMER_ID, COPIED_DURATION_MS, None);
-                            let _ = windows::Win32::Graphics::Gdi::InvalidateRect(Some(hwnd), None, false);
+                            let _ = DestroyWindow(hwnd);
                             return LRESULT(0);
                         }
                         state.error = Some((*result, Instant::now()));
@@ -292,9 +280,6 @@ unsafe extern "system" fn wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam:
                     state.error = None;
                     let _ = windows::Win32::Graphics::Gdi::InvalidateRect(Some(hwnd), None, false);
                 }
-            } else if wparam.0 as usize == COPIED_TIMER_ID {
-                let _ = DestroyWindow(hwnd);
-                return LRESULT(0);
             }
             LRESULT(0)
         }
@@ -347,11 +332,6 @@ unsafe fn paint(hwnd: HWND, state: &mut OverlayState) {
         Mode::Color => paint_color(bdc, state, scale),
         Mode::Text => paint_text(bdc, state, scale),
     }
-
-    if state.copied.is_some() {
-        draw_message_panel(bdc, state.screen.width, state.screen.height, "Copied!", rgb(22, 101, 52), rgb(220, 252, 231), scale);
-    }
-
     let _ = BitBlt(hdc, 0, 0, state.screen.width, state.screen.height, Some(bdc), 0, 0, SRCCOPY);
     let _ = EndPaint(hwnd, &ps);
 }
@@ -594,10 +574,7 @@ unsafe fn handle_popup_click(hwnd: HWND, state: &mut OverlayState, lparam: LPARA
         return;
     };
     if crate::clipboard::write_text(&text).is_ok() {
-        state.picked = None;
-        state.copied = Some(Instant::now());
-        let _ = SetTimer(Some(hwnd), COPIED_TIMER_ID, COPIED_DURATION_MS, None);
-        let _ = windows::Win32::Graphics::Gdi::InvalidateRect(Some(hwnd), None, false);
+        let _ = DestroyWindow(hwnd);
     }
 }
 
