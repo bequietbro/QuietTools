@@ -15,6 +15,10 @@ mod window_manager;
 
 #[cfg(target_os = "windows")]
 fn main() {
+    if std::env::args().any(|a| a == "--install") {
+        app::install_mode();
+        return;
+    }
     app::run();
 }
 

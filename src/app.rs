@@ -1,6 +1,6 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use windows::core::{w, PCWSTR};
+use windows::core::{w, PCWSTR, PWSTR};
 use windows::Win32::Foundation::{GetLastError, HWND, LPARAM, LRESULT, WPARAM, ERROR_ALREADY_EXISTS};
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows::Win32::System::Threading::CreateMutexW;
@@ -221,6 +221,66 @@ fn set_autostart(enabled: bool) -> Result<(), String> {
             let _ = RegCloseKey(key);
             if err.0 == 0 { Ok(()) } else { Err(format!("RegDeleteValueW failed: {}", err.0)) }
         }
+    }
+}
+
+pub fn install_mode() {
+    let exe = match std::env::current_exe() {
+        Ok(e) => e,
+        Err(_) => return,
+    };
+    let local = match std::env::var("LOCALAPPDATA") {
+        Ok(v) => v,
+        Err(_) => return,
+    };
+    let dir = local + "\\QuietTools";
+    let target = std::path::Path::new(&dir).join("QuietTools.exe");
+    let dir_w: Vec<u16> = dir.encode_utf16().chain(Some(0)).collect();
+    let exe_s = exe.to_string_lossy().to_string();
+    let exe_w: Vec<u16> = exe_s.encode_utf16().chain(Some(0)).collect();
+    let target_s = target.to_string_lossy().to_string();
+    let target_w: Vec<u16> = target_s.encode_utf16().chain(Some(0)).collect();
+    let cmd = format!("\"{}\"", target_s);
+    let mut cmd_w: Vec<u16> = cmd.encode_utf16().chain(Some(0)).collect();
+
+    unsafe {
+        use windows::Win32::Storage::FileSystem::{CopyFileW, CreateDirectoryW};
+        use windows::Win32::System::Threading::{CreateProcessW, PROCESS_INFORMATION, PROCESS_CREATION_FLAGS, STARTUPINFOW};
+        let _ = CreateDirectoryW(PCWSTR(dir_w.as_ptr()), Some(std::ptr::null()));
+        if CopyFileW(PCWSTR(exe_w.as_ptr()), PCWSTR(target_w.as_ptr()), false).is_err() {
+            return;
+        }
+        let name: Vec<u16> = "QuietTools".encode_utf16().chain(Some(0)).collect();
+        let key: Vec<u16> = "Software\\Microsoft\\Windows\\CurrentVersion\\Run".encode_utf16().chain(Some(0)).collect();
+        let val: Vec<u16> = cmd.encode_utf16().chain(Some(0)).collect();
+        use windows::Win32::System::Registry::{
+            RegCloseKey, RegCreateKeyW, RegSetValueExW, HKEY, HKEY_CURRENT_USER, REG_SZ,
+        };
+        let mut hkey = HKEY::default();
+        if RegCreateKeyW(HKEY_CURRENT_USER, PCWSTR(key.as_ptr()), &mut hkey).0 == 0 {
+            let _ = RegSetValueExW(
+                hkey,
+                PCWSTR(name.as_ptr()),
+                Some(0),
+                REG_SZ,
+                Some(std::slice::from_raw_parts(val.as_ptr() as *const u8, val.len() * 2)),
+            );
+            let _ = RegCloseKey(hkey);
+        }
+        let si = STARTUPINFOW { cb: std::mem::size_of::<STARTUPINFOW>() as u32, ..Default::default() };
+        let mut pi = PROCESS_INFORMATION::default();
+        let _ = CreateProcessW(
+            PCWSTR::default(),
+            Some(PWSTR(cmd_w.as_mut_ptr())),
+            None,
+            None,
+            false,
+            PROCESS_CREATION_FLAGS(0),
+            None,
+            PCWSTR::default(),
+            &si,
+            &mut pi,
+        );
     }
 }
 
