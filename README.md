@@ -1,3 +1,5 @@
+<h1 align="center">QuietTools</h1>
+
 > [!NOTE]
 > **Supports Windows 10 and 11 only.** OCR requires language packs installed via **Windows Settings > Time & Language > Language & region**.
 
