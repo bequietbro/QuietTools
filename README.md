@@ -47,7 +47,7 @@ No installer, no dependencies, no administrator rights needed.
 1. Install [Rust](https://www.rust-lang.org/tools/install).
 2. Clone the repository:
    ```
-   git clone https://github.com/BEQI/QuietTools.git
+   git clone https://github.com/bequietbro/QuietTools.git
    cd QuietTools
    ```
 3. Build the release binary:
