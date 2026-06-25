@@ -31,7 +31,10 @@ QuietTools is a lightweight, native Windows utility that lives in your system tr
 <img width="533" height="301" alt="qt_wm" src="https://github.com/user-attachments/assets/707631dc-e1fd-433e-960f-10d762d01a8d" />
 
 <h2 align="center">Installation</h2>
+## Automatic:
+*Сoming soon...*
 
+## Manual:
 1. Download `QuietTools.exe` from the [Releases](../../releases) page.
 2. Run the executable — it starts in the system tray.
 3. *(Optional)* Enable **Run at startup** from the tray menu.
