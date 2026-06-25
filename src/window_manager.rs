@@ -161,7 +161,7 @@ unsafe extern "system" fn ll_mouse(code: i32, w: WPARAM, l: LPARAM) -> LRESULT {
                         OPERATION.store(OP_MOVE, Ordering::Relaxed);
                     }
                     apply_cursor(CUR_MOVE);
-                    thread::spawn(move || operation_thread());
+                    thread::spawn(operation_thread);
                     return LRESULT(1);
                 }
             }
@@ -180,7 +180,7 @@ unsafe extern "system" fn ll_mouse(code: i32, w: WPARAM, l: LPARAM) -> LRESULT {
                     RESIZE_CORNER.store(corner, Ordering::Relaxed);
                     OPERATION.store(OP_RESIZE, Ordering::Relaxed);
                     apply_cursor(match corner { 0 | 2 => CUR_NWSE, _ => CUR_NESW });
-                    thread::spawn(move || operation_thread());
+                    thread::spawn(operation_thread);
                     return LRESULT(1);
                 }
             }

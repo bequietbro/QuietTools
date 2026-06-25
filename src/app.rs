@@ -131,14 +131,14 @@ unsafe extern "system" fn wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam:
 }
 
 unsafe fn add_tray(hwnd: HWND) {
-    let mut nid = tray_data(hwnd);
-    let _ = Shell_NotifyIconW(NIM_ADD, &mut nid);
-    let _ = Shell_NotifyIconW(NIM_MODIFY, &mut nid);
+    let nid = tray_data(hwnd);
+    let _ = Shell_NotifyIconW(NIM_ADD, &nid);
+    let _ = Shell_NotifyIconW(NIM_MODIFY, &nid);
 }
 
 unsafe fn delete_tray(hwnd: HWND) {
-    let mut nid = tray_data(hwnd);
-    let _ = Shell_NotifyIconW(NIM_DELETE, &mut nid);
+    let nid = tray_data(hwnd);
+    let _ = Shell_NotifyIconW(NIM_DELETE, &nid);
 }
 
 unsafe fn tray_data(hwnd: HWND) -> NOTIFYICONDATAW {

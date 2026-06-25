@@ -4,29 +4,30 @@ use windows::Media::Ocr::OcrEngine;
 use windows::Win32::System::WinRT::IMemoryBufferByteAccess;
 use windows_future::AsyncStatus;
 
-fn is_confusable(c: char) -> bool {
-    matches!(
-        c,
-        '\u{0430}' | '\u{0435}' | '\u{043C}' | '\u{043E}' | '\u{0440}' | '\u{0441}' | '\u{0443}' | '\u{0445}' | '\u{0456}' |
-        '\u{00E0}' | '\u{00E1}' | '\u{00E2}' | '\u{00E3}' | '\u{00E4}' | '\u{00E5}' | '\u{00E8}' | '\u{00E9}' |
-        '\u{00EC}' | '\u{00ED}' | '\u{00F2}' | '\u{00F3}' | '\u{00F9}' | '\u{00FA}' | '\u{00FC}' |
-        '\u{0101}' | '\u{0113}' | '\u{012B}' | '\u{014D}' | '\u{016B}' |
-        '\u{1E01}' | '\u{1E03}' | '\u{1E0B}' | '\u{1E0D}' | '\u{1E1F}' | '\u{1E21}' | '\u{1E37}' | '\u{1E39}' | '\u{1E4B}' | '\u{1E55}' | '\u{1E57}' | '\u{1E59}' | '\u{1E5B}' | '\u{1E5D}' | '\u{1E5F}' | '\u{1E7D}' | '\u{1E81}' | '\u{1E83}' | '\u{1E85}' | '\u{1E8B}' | '\u{1E8D}' | '\u{1E91}' | '\u{1E93}' | '\u{1E95}' |
-        '\u{1EA1}' | '\u{1EB9}' | '\u{1ECB}' | '\u{1ED9}' | '\u{1EE9}' | '\u{1EF3}' | '\u{1EF5}' | '\u{1EF7}' | '\u{1EF9}'
-    )
-}
-
-fn has_genuine_non_ascii(s: &str) -> bool {
-    let total = s.chars().count();
-    if total == 0 {
-        return false;
-    }
-    let genuine = s.chars().filter(|c| *c > '\u{007F}' && !is_confusable(*c)).count();
-    genuine as f64 / total as f64 >= 0.15
-}
-
-fn has_non_ascii(s: &str) -> bool {
-    s.chars().any(|c| c > '\u{007F}')
+fn normalize_fullwidth(s: &str) -> String {
+    s.chars().map(|c| match c {
+        '\u{FF08}' => '(',
+        '\u{FF09}' => ')',
+        '\u{FF3B}' => '[',
+        '\u{FF3D}' => ']',
+        '\u{FF5B}' => '{',
+        '\u{FF5D}' => '}',
+        '\u{FF1A}' => ':',
+        '\u{FF1B}' => ';',
+        '\u{FF0C}' => ',',
+        '\u{FF0E}' => '.',
+        '\u{FF10}'..='\u{FF19}' => char::from_u32(c as u32 - 0xFF10 + 0x30).unwrap_or(c),
+        '\u{FF21}'..='\u{FF3A}' => char::from_u32(c as u32 - 0xFF21 + 0x41).unwrap_or(c),
+        '\u{FF41}'..='\u{FF5A}' => char::from_u32(c as u32 - 0xFF41 + 0x61).unwrap_or(c),
+        '\u{0410}' => 'A', '\u{0412}' => 'B', '\u{0415}' => 'E',
+        '\u{0406}' => 'I', '\u{041A}' => 'K', '\u{041C}' => 'M',
+        '\u{041D}' => 'H', '\u{041E}' => 'O', '\u{0420}' => 'P',
+        '\u{0421}' => 'C', '\u{0422}' => 'T', '\u{0425}' => 'X',
+        '\u{0430}' => 'a', '\u{0435}' => 'e', '\u{0456}' => 'i',
+        '\u{043E}' => 'o', '\u{0440}' => 'p', '\u{0441}' => 'c',
+        '\u{0443}' => 'y', '\u{0445}' => 'x',
+        _ => c,
+    }).collect()
 }
 
 fn to_grayscale(bgra: &mut [u8]) {
@@ -38,6 +39,65 @@ fn to_grayscale(bgra: &mut [u8]) {
         pixel[0] = y;
         pixel[1] = y;
         pixel[2] = y;
+    }
+}
+
+fn otsu_threshold(bgra: &mut [u8]) {
+    let total = (bgra.len() / 4) as u64;
+    if total == 0 {
+        return;
+    }
+
+    let mut hist = [0u64; 256];
+    for pixel in bgra.chunks_exact(4) {
+        hist[pixel[0] as usize] += 1;
+    }
+
+    let mut best = 128u8;
+    let mut max_var = 0.0f64;
+    let mut w_b = 0u64;
+    let mut sum_b: u64 = 0;
+    let mut sum: u64 = 0;
+    for (i, &count) in hist.iter().enumerate() {
+        sum += (i as u64) * count;
+    }
+
+    for (t, count) in hist.iter().enumerate() {
+        w_b += count;
+        if w_b == 0 {
+            continue;
+        }
+        let w_f = total - w_b;
+        if w_f == 0 {
+            break;
+        }
+        sum_b += (t as u64) * count;
+        let mean_b = sum_b as f64 / w_b as f64;
+        let mean_f = (sum - sum_b) as f64 / w_f as f64;
+        let var = (w_b as f64) * (w_f as f64) * (mean_b - mean_f).powi(2);
+        if var > max_var {
+            max_var = var;
+            best = t as u8;
+        }
+    }
+
+    let mut black_count = 0u64;
+    for pixel in bgra.chunks_exact_mut(4) {
+        let v = if pixel[0] <= best { 0u8 } else { 255u8 };
+        pixel[0] = v;
+        pixel[1] = v;
+        pixel[2] = v;
+        if v == 0 {
+            black_count += 1;
+        }
+    }
+
+    if black_count > total * 70 / 100 {
+        for pixel in bgra.chunks_exact_mut(4) {
+            pixel[0] = 255 - pixel[0];
+            pixel[1] = 255 - pixel[1];
+            pixel[2] = 255 - pixel[2];
+        }
     }
 }
 
@@ -127,16 +187,6 @@ fn write_bitmap(bgra: &[u8], width: u32, height: u32) -> Result<SoftwareBitmap, 
     SoftwareBitmap::Copy(&bitmap).map_err(|_| "Bitmap error".to_string())
 }
 
-fn save_fallback(t: &str, ascii: &mut Option<String>, confusable: &mut Option<String>) {
-    if has_non_ascii(t) {
-        if confusable.is_none() {
-            *confusable = Some(t.to_string());
-        }
-    } else if ascii.is_none() {
-        *ascii = Some(t.to_string());
-    }
-}
-
 fn fix_ocr_result(s: &str) -> String {
     let chars: Vec<char> = s.chars().collect();
     let n = chars.len();
@@ -189,53 +239,144 @@ fn pick_scale(w: u32, h: u32) -> u32 {
     else { 3 }
 }
 
-pub fn recognize_region(bgra: &[u8], width: u32, height: u32) -> Result<String, String> {
-    let mut pixels = bgra.to_vec();
-    to_grayscale(&mut pixels);
-    let (pixels, rw, rh) = upscale(&pixels, width, height, pick_scale(width, height));
+fn ocr_bitmap(bitmap: &SoftwareBitmap) -> Result<String, String> {
+    let mut collected: Vec<String> = Vec::new();
 
-    let bitmap = write_bitmap(&pixels, rw, rh)?;
+    if let Ok(engine) = OcrEngine::TryCreateFromUserProfileLanguages() {
+        if let Ok(text) = try_engine(bitmap, &engine) {
+            let t = text.trim().to_string();
+            if !t.is_empty() {
+                collected.push(t);
+            }
+        }
+    }
 
     let langs = OcrEngine::AvailableRecognizerLanguages()
         .map_err(|_| "OCR: install a language pack")?;
-
-    let lang_count = langs.Size().unwrap_or(0);
-    if lang_count == 0 {
-        return Err("OCR: install a language pack".into());
-    }
-
-    let mut ascii_fallback: Option<String> = None;
-    let mut confusable_fallback: Option<String> = None;
-
-    if let Ok(engine) = OcrEngine::TryCreateFromUserProfileLanguages() {
-        if let Ok(text) = try_engine(&bitmap, &engine) {
-            let t = text.trim().to_string();
-            if !t.is_empty() {
-                if has_genuine_non_ascii(&t) {
-                    return Ok(fix_ocr_result(&t));
-                }
-                save_fallback(&t, &mut ascii_fallback, &mut confusable_fallback);
-            }
-        }
-    }
-
     for lang in &langs {
         if let Ok(engine) = OcrEngine::TryCreateFromLanguage(&lang) {
-            if let Ok(text) = try_engine(&bitmap, &engine) {
+            if let Ok(text) = try_engine(bitmap, &engine) {
                 let t = text.trim().to_string();
                 if !t.is_empty() {
-                    if has_genuine_non_ascii(&t) {
-                        return Ok(fix_ocr_result(&t));
-                    }
-                    save_fallback(&t, &mut ascii_fallback, &mut confusable_fallback);
+                    collected.push(t);
                 }
             }
         }
     }
 
-    if let Some(text) = ascii_fallback.or(confusable_fallback) {
-        return Ok(fix_ocr_result(&text));
+    if collected.is_empty() {
+        return Err("No text found".into());
     }
 
-    Err("No text found".into())
+    collected.sort_by(|a, b| {
+        let a_norm = normalize_fullwidth(a);
+        let b_norm = normalize_fullwidth(b);
+        let a_total = a_norm.chars().count();
+        let b_total = b_norm.chars().count();
+        let a_script = a_norm.chars().filter(|c| !c.is_ascii() && c.is_alphabetic()).count() > a_total / 10;
+        let b_script = b_norm.chars().filter(|c| !c.is_ascii() && c.is_alphabetic()).count() > b_total / 10;
+        let a_alpha = a_norm.chars().filter(|c| c.is_ascii_alphanumeric()).count();
+        let b_alpha = b_norm.chars().filter(|c| c.is_ascii_alphanumeric()).count();
+        b_script.cmp(&a_script).then(b_alpha.cmp(&a_alpha))
+    });
+
+    let mut best = normalize_fullwidth(&collected[0]);
+    let pairs = [('(', ')'), ('[', ']')];
+    for r in &collected[1..] {
+        let norm = normalize_fullwidth(r);
+        for &(open, close) in &pairs {
+            if best.contains(close) && !best.contains(open)
+                && norm.contains(open) && norm.contains(close)
+            {
+                if let Some(pos) = norm.find(open) {
+                    let next_word: String = norm[pos + 1..].chars()
+                        .skip_while(|c| !c.is_ascii_alphanumeric())
+                        .take_while(|c| c.is_ascii_alphanumeric())
+                        .collect();
+                    if !next_word.is_empty() {
+                        if let Some(wp) = best.find(&next_word) {
+                            let start = wp - best[..wp].chars().rev().take_while(|c| c.is_ascii_alphanumeric()).count();
+                            best.insert(start, open);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(fix_ocr_result(&best))
+}
+
+fn threshold_fixed(bgra: &mut [u8]) {
+    let total = bgra.len() / 4;
+    for p in bgra.chunks_exact_mut(4) {
+        let v = if p[0] <= 128 { 0 } else { 255 };
+        p[0] = v; p[1] = v; p[2] = v;
+    }
+    if total > 0 {
+        let black = bgra.chunks_exact(4).filter(|p| p[0] == 0).count();
+        if black > total * 70 / 100 {
+            for p in bgra.chunks_exact_mut(4) {
+                p[0] = 255 - p[0];
+                p[1] = 255 - p[1];
+                p[2] = 255 - p[2];
+            }
+        }
+    }
+}
+
+pub fn recognize_region(bgra: &[u8], width: u32, height: u32) -> Result<String, String> {
+    let mut results: Vec<String> = Vec::new();
+
+    if let Ok(bitmap) = write_bitmap(bgra, width, height) {
+        if let Ok(text) = ocr_bitmap(&bitmap) {
+            results.push(text);
+        }
+    }
+
+    let scale = pick_scale(width, height);
+    if scale < 8 {
+        let mut pixels = bgra.to_vec();
+        to_grayscale(&mut pixels);
+        otsu_threshold(&mut pixels);
+        let (pixels, rw, rh) = upscale(&pixels, width, height, scale);
+        if let Ok(bitmap) = write_bitmap(&pixels, rw, rh) {
+            if let Ok(text) = ocr_bitmap(&bitmap) {
+                results.push(text);
+            }
+        }
+    } else {
+        let mut p1 = bgra.to_vec();
+        to_grayscale(&mut p1);
+        let (p1, rw1, rh1) = upscale(&p1, width, height, scale);
+        if let Ok(bitmap) = write_bitmap(&p1, rw1, rh1) {
+            if let Ok(text) = ocr_bitmap(&bitmap) {
+                results.push(text);
+            }
+        }
+        let mut p2 = bgra.to_vec();
+        to_grayscale(&mut p2);
+        threshold_fixed(&mut p2);
+        let (p2, rw2, rh2) = upscale(&p2, width, height, scale);
+        if let Ok(bitmap) = write_bitmap(&p2, rw2, rh2) {
+            if let Ok(text) = ocr_bitmap(&bitmap) {
+                results.push(text);
+            }
+        }
+    }
+
+    if results.is_empty() {
+        return Err("No text found".into());
+    }
+
+    results.sort_by(|a, b| {
+        let a_norm = normalize_fullwidth(a);
+        let b_norm = normalize_fullwidth(b);
+        let a_alpha = a_norm.chars().filter(|c| c.is_ascii_alphanumeric()).count();
+        let b_alpha = b_norm.chars().filter(|c| c.is_ascii_alphanumeric()).count();
+        b_alpha.cmp(&a_alpha)
+    });
+
+    Ok(results[0].clone())
 }

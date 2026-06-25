@@ -275,7 +275,7 @@ unsafe extern "system" fn wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam:
             LRESULT(0)
         }
         WM_TIMER => {
-            if wparam.0 as usize == ERROR_TIMER_ID {
+            if wparam.0 == ERROR_TIMER_ID {
                 if let Some(state) = state(hwnd) {
                     state.error = None;
                     let _ = windows::Win32::Graphics::Gdi::InvalidateRect(Some(hwnd), None, false);
@@ -435,6 +435,7 @@ fn sf(size: i32, scale: f64) -> i32 {
     (size as f64 * scale).max(1.0) as i32
 }
 
+#[allow(clippy::too_many_arguments)]
 unsafe fn draw_label(hdc: HDC, x: i32, y: i32, w: i32, h: i32, text: &str, bg: COLORREF, fg: COLORREF, scale: f64) {
     let brush = CreateSolidBrush(bg);
     let rect = RECT { left: x, top: y, right: x + w, bottom: y + h };

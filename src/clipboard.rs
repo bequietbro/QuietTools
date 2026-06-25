@@ -21,7 +21,7 @@ pub fn write_text(text: &str) -> Result<(), String> {
             }
             std::ptr::copy_nonoverlapping(wide.as_ptr() as *const c_void, ptr, bytes);
             let _ = GlobalUnlock(handle);
-            SetClipboardData(CF_UNICODETEXT.0 as u32, Some(HANDLE(handle.0 as *mut c_void)))
+            SetClipboardData(CF_UNICODETEXT.0 as u32, Some(HANDLE(handle.0)))
                 .map_err(|e| format!("SetClipboardData failed: {e}"))?;
             Ok(())
         })();
