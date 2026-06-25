@@ -65,7 +65,7 @@ Developed by <a href="https://github.com/BEQI">BEQI</a>.
 <h2 align="center">License</h2>
 
 <p align="center">
-<img src="https://www.gnu.org/graphics/gplv3-127x51.png" alt="GPLv3 License" />
+<img src="https://www.gnu.org/graphics/gplv3-127x51.png" alt="GPL-3.0 License" />
 </p>
 
 <p align="center">
