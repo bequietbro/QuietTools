@@ -3,7 +3,7 @@
 
 <h2 align="center">Description</h2>
 
-QuietTools is a lightweight, native Windows utility that lives in your system tray. It provides quick-access color picking, OCR text extraction with global hotkeys and a keyboard-driven window manager like in KDE.
+QuietTools is a lightweight, native Windows utility that lives in your system tray. It provides quick-access color picking, OCR text extraction and a keyboard-driven window manager like in KDE.
 
 <h2 align="center">Features</h2>
 
@@ -19,7 +19,7 @@ QuietTools is a lightweight, native Windows utility that lives in your system tr
 - Recognizes text offline via Windows OCR
 - Supports English, Russian, Chinese, and any installed language pack
 - Multi-language text in a single selection works
-
+<img width="533" height="300" alt="qt_te" src="https://github.com/user-attachments/assets/c2693784-ff5a-4a15-969c-4ce1d160dbe3" />
 
 **Window Manager** — `Win` key + mouse
 - `Win` + **Left-drag**: Move a window
