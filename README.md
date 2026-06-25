@@ -3,7 +3,7 @@
 
 <h2 align="center">Description</h2>
 
-QuietTools is a lightweight, native Windows utility that lives in your system tray. It provides quick-access color picking and OCR text extraction with global hotkeys, plus a keyboard-driven window manager for moving, resizing, and snapping windows.
+QuietTools is a lightweight, native Windows utility that lives in your system tray. It provides quick-access color picking, OCR text extraction with global hotkeys and a keyboard-driven window manager like in KDE.
 
 <h2 align="center">Features</h2>
 
@@ -13,7 +13,6 @@ QuietTools is a lightweight, native Windows utility that lives in your system tr
 - Pixel-level accuracy with magnified loupe
 - Arrow keys for fine cursor movement (hold `Shift` for 5px steps)
 <img width="533" height="299" alt="qt_cp" src="https://github.com/user-attachments/assets/c7cc86c3-b973-4ad4-81f3-93cff4141930" />
-
 
 **Text Extractor** — `Ctrl` + `Alt` + `C`
 - Drag to select a screen region
@@ -28,7 +27,8 @@ QuietTools is a lightweight, native Windows utility that lives in your system tr
 - `Win` + **Right-drag**: Resize a window from nearest corner
 - `Win` + **Middle-click**: Minimize a window
 - `Win` + **Scroll**: Adjust window opacity
-- `Win` + **Double-click titlebar**: Toggle maximize
+- `Win` + **Double-click**: Toggle maximize
+<img width="533" height="301" alt="qt_wm" src="https://github.com/user-attachments/assets/707631dc-e1fd-433e-960f-10d762d01a8d" />
 
 <h2 align="center">Installation</h2>
 
